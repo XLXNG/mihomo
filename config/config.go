@@ -91,10 +91,11 @@ type Inbound struct {
 
 // Controller config
 type Controller struct {
-	ExternalController    string `json:"-"`
-	ExternalControllerTLS string `json:"-"`
-	ExternalUI            string `json:"-"`
-	Secret                string `json:"-"`
+	ExternalController     string `json:"-"`
+	ExternalControllerTLS  string `json:"-"`
+	ExternalControllerUnix string `json:"-"`
+	ExternalUI             string `json:"-"`
+	Secret                 string `json:"-"`
 }
 
 // NTP config
@@ -113,6 +114,7 @@ type DNS struct {
 	PreferH3              bool             `yaml:"prefer-h3"`
 	IPv6                  bool             `yaml:"ipv6"`
 	IPv6Timeout           uint             `yaml:"ipv6-timeout"`
+	UseSystemHosts        bool             `yaml:"use-system-hosts"`
 	NameServer            []dns.NameServer `yaml:"nameserver"`
 	Fallback              []dns.NameServer `yaml:"fallback"`
 	FallbackFilter        FallbackFilter   `yaml:"fallback-filter"`
@@ -208,6 +210,7 @@ type RawDNS struct {
 	IPv6                  bool                                `yaml:"ipv6" json:"ipv6"`
 	IPv6Timeout           uint                                `yaml:"ipv6-timeout" json:"ipv6-timeout"`
 	UseHosts              bool                                `yaml:"use-hosts" json:"use-hosts"`
+	UseSystemHosts        bool                                `yaml:"use-system-hosts" json:"use-system-hosts"`
 	NameServer            []string                            `yaml:"nameserver" json:"nameserver"`
 	Fallback              []string                            `yaml:"fallback" json:"fallback"`
 	FallbackFilter        RawFallbackFilter                   `yaml:"fallback-filter" json:"fallback-filter"`
@@ -304,6 +307,7 @@ type RawConfig struct {
 	LogLevel                log.LogLevel      `yaml:"log-level" json:"log-level"`
 	IPv6                    bool              `yaml:"ipv6" json:"ipv6"`
 	ExternalController      string            `yaml:"external-controller"`
+	ExternalControllerUnix  string            `yaml:"external-controller-unix"`
 	ExternalControllerTLS   string            `yaml:"external-controller-tls"`
 	ExternalUI              string            `yaml:"external-ui"`
 	ExternalUIURL           string            `yaml:"external-ui-url" json:"external-ui-url"`
@@ -413,7 +417,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		ProxyGroup:        []map[string]any{},
 		TCPConcurrent:     false,
 		FindProcessMode:   P.FindProcessStrict,
-		GlobalUA:          "clash.meta",
+		GlobalUA:          "clash.meta/" + C.Version,
 		Tun: RawTun{
 			Enable:              false,
 			Device:              "",
@@ -454,12 +458,13 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 			Interval:      30,
 		},
 		DNS: RawDNS{
-			Enable:       false,
-			IPv6:         false,
-			UseHosts:     true,
-			IPv6Timeout:  100,
-			EnhancedMode: C.DNSMapping,
-			FakeIPRange:  "198.18.0.1/16",
+			Enable:         false,
+			IPv6:           false,
+			UseHosts:       true,
+			UseSystemHosts: true,
+			IPv6Timeout:    100,
+			EnhancedMode:   C.DNSMapping,
+			FakeIPRange:    "198.18.0.1/16",
 			FallbackFilter: RawFallbackFilter{
 				GeoIP:     true,
 				GeoIPCode: "CN",
@@ -678,10 +683,11 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			InboundMPTCP:      cfg.InboundMPTCP,
 		},
 		Controller: Controller{
-			ExternalController:    cfg.ExternalController,
-			ExternalUI:            cfg.ExternalUI,
-			Secret:                cfg.Secret,
-			ExternalControllerTLS: cfg.ExternalControllerTLS,
+			ExternalController:     cfg.ExternalController,
+			ExternalUI:             cfg.ExternalUI,
+			Secret:                 cfg.Secret,
+			ExternalControllerUnix: cfg.ExternalControllerUnix,
+			ExternalControllerTLS:  cfg.ExternalControllerTLS,
 		},
 		UnifiedDelay:            cfg.UnifiedDelay,
 		Mode:                    cfg.Mode,
@@ -1282,12 +1288,13 @@ func parseDNS(rawCfg *RawConfig, hosts *trie.DomainTrie[resolver.HostValue], rul
 	}
 
 	dnsCfg := &DNS{
-		Enable:       cfg.Enable,
-		Listen:       cfg.Listen,
-		PreferH3:     cfg.PreferH3,
-		IPv6Timeout:  cfg.IPv6Timeout,
-		IPv6:         cfg.IPv6,
-		EnhancedMode: cfg.EnhancedMode,
+		Enable:         cfg.Enable,
+		Listen:         cfg.Listen,
+		PreferH3:       cfg.PreferH3,
+		IPv6Timeout:    cfg.IPv6Timeout,
+		IPv6:           cfg.IPv6,
+		UseSystemHosts: cfg.UseSystemHosts,
+		EnhancedMode:   cfg.EnhancedMode,
 		FallbackFilter: FallbackFilter{
 			IPCIDR:  []netip.Prefix{},
 			GeoSite: []router.DomainMatcher{},
