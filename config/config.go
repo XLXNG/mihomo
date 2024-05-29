@@ -28,6 +28,7 @@ import (
 	SNIFF "github.com/metacubex/mihomo/component/sniffer"
 	tlsC "github.com/metacubex/mihomo/component/tls"
 	"github.com/metacubex/mihomo/component/trie"
+	"github.com/metacubex/mihomo/component/updater"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/features"
 	providerTypes "github.com/metacubex/mihomo/constant/provider"
@@ -640,28 +641,28 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		N.KeepAliveInterval = time.Duration(cfg.KeepAliveInterval) * time.Second
 	}
 
-	ExternalUIPath = cfg.ExternalUI
+	updater.ExternalUIPath = cfg.ExternalUI
 	// checkout externalUI exist
-	if ExternalUIPath != "" {
-		ExternalUIPath = C.Path.Resolve(ExternalUIPath)
-		if _, err := os.Stat(ExternalUIPath); os.IsNotExist(err) {
+	if updater.ExternalUIPath != "" {
+		updater.ExternalUIPath = C.Path.Resolve(updater.ExternalUIPath)
+		if _, err := os.Stat(updater.ExternalUIPath); os.IsNotExist(err) {
 			defaultUIpath := path.Join(C.Path.HomeDir(), "ui")
-			log.Warnln("external-ui: %s does not exist, creating folder in %s", ExternalUIPath, defaultUIpath)
+			log.Warnln("external-ui: %s does not exist, creating folder in %s", updater.ExternalUIPath, defaultUIpath)
 			if err := os.MkdirAll(defaultUIpath, os.ModePerm); err != nil {
 				return nil, err
 			}
-			ExternalUIPath = defaultUIpath
+			updater.ExternalUIPath = defaultUIpath
 			cfg.ExternalUI = defaultUIpath
 		}
 	}
 	// checkout UIpath/name exist
 	if cfg.ExternalUIName != "" {
-		ExternalUIName = cfg.ExternalUIName
+		updater.ExternalUIName = cfg.ExternalUIName
 	} else {
-		ExternalUIFolder = ExternalUIPath
+		updater.ExternalUIFolder = updater.ExternalUIPath
 	}
 	if cfg.ExternalUIURL != "" {
-		ExternalUIURL = cfg.ExternalUIURL
+		updater.ExternalUIURL = cfg.ExternalUIURL
 	}
 
 	cfg.Tun.RedirectToTun = cfg.EBpf.RedirectToTun
@@ -715,8 +716,11 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	groupsConfig := cfg.ProxyGroup
 	providersConfig := cfg.ProxyProvider
 
-	var proxyList []string
-	var AllProxies []string
+	var (
+		proxyList  []string
+		AllProxies []string
+		hasGlobal  bool
+	)
 	proxiesList := list.New()
 	groupsList := list.New()
 
@@ -748,6 +752,9 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 		groupName, existName := mapping["name"].(string)
 		if !existName {
 			return nil, nil, fmt.Errorf("proxy group %d: missing name", idx)
+		}
+		if groupName == "GLOBAL" {
+			hasGlobal = true
 		}
 		proxyList = append(proxyList, groupName)
 		groupsList.PushBack(mapping)
@@ -800,13 +807,15 @@ func parseProxies(cfg *RawConfig) (proxies map[string]C.Proxy, providersMap map[
 	pd, _ := provider.NewCompatibleProvider(provider.ReservedName, ps, hc)
 	providersMap[provider.ReservedName] = pd
 
-	global := outboundgroup.NewSelector(
-		&outboundgroup.GroupCommonOption{
-			Name: "GLOBAL",
-		},
-		[]providerTypes.ProxyProvider{pd},
-	)
-	proxies["GLOBAL"] = adapter.NewProxy(global)
+	if !hasGlobal {
+		global := outboundgroup.NewSelector(
+			&outboundgroup.GroupCommonOption{
+				Name: "GLOBAL",
+			},
+			[]providerTypes.ProxyProvider{pd},
+		)
+		proxies["GLOBAL"] = adapter.NewProxy(global)
+	}
 	ProxiesList = proxiesList
 	GroupsList = groupsList
 	if ParsingProxiesCallback != nil {
@@ -927,7 +936,7 @@ func parseRules(rulesConfig []string, proxies map[string]C.Proxy, subRules map[s
 
 		l := len(rule)
 
-		if ruleName == "NOT" || ruleName == "OR" || ruleName == "AND" || ruleName == "SUB-RULE" || ruleName == "DOMAIN-REGEX" {
+		if ruleName == "NOT" || ruleName == "OR" || ruleName == "AND" || ruleName == "SUB-RULE" || ruleName == "DOMAIN-REGEX" || ruleName == "PROCESS-NAME-REGEX" || ruleName == "PROCESS-PATH-REGEX" {
 			target = rule[l-1]
 			payload = strings.Join(rule[1:l-1], ",")
 		} else {

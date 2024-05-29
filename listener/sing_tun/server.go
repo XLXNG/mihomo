@@ -20,12 +20,14 @@ import (
 
 	tun "github.com/metacubex/sing-tun"
 	"github.com/sagernet/sing/common"
+	"github.com/sagernet/sing/common/control"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
 	"github.com/sagernet/sing/common/ranges"
 )
 
 var InterfaceName = "Meta"
+var EnforceBindInterface = false
 
 type Listener struct {
 	closed  bool
@@ -57,13 +59,21 @@ func CalculateInterfaceName(name string) (tunName string) {
 	if err != nil {
 		return
 	}
-	var tunIndex int
+	tunIndex := 0
+	indexSet := make(map[int]struct{})
 	for _, netInterface := range interfaces {
 		if strings.HasPrefix(netInterface.Name, tunName) {
 			index, parseErr := strconv.ParseInt(netInterface.Name[len(tunName):], 10, 16)
 			if parseErr == nil {
-				tunIndex = int(index) + 1
+				indexSet[int(index)] = struct{}{}
 			}
+		}
+	}
+	for index := range indexSet {
+		if index == tunIndex {
+			tunIndex += 1
+		} else { // indexSet already sorted and distinct, so this tunIndex nobody used
+			break
 		}
 	}
 	tunName = F.ToString(tunName, tunIndex)
@@ -263,6 +273,8 @@ func New(options LC.Tun, tunnel C.Tunnel, additions ...inbound.Addition) (l *Lis
 		UDPTimeout:             udpTimeout,
 		Handler:                handler,
 		Logger:                 log.SingLogger,
+		InterfaceFinder:        control.DefaultInterfaceFinder(),
+		EnforceBindInterface:   EnforceBindInterface,
 	}
 
 	if options.FileDescriptor > 0 {
