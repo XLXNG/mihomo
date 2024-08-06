@@ -155,6 +155,7 @@ jobs:
         echo "BUILDTIME=$(date)" >> $GITHUB_ENV
         echo "CGO_ENABLED=0" >> $GITHUB_ENV
         echo "BUILDTAG=-extldflags --static" >> $GITHUB_ENV
+        echo "GOTOOLCHAIN=local" >> $GITHUB_ENV
 
     - name: Setup NDK
       if: ${{ matrix.jobs.goos == 'android' }}
@@ -206,6 +207,10 @@ jobs:
         sudo apt-get install dpkg
         if [ "${{matrix.jobs.abi}}" = "1" ]; then
           ARCH=loongarch64
+        elif [ "${{matrix.jobs.goarm}}" = "7" ]; then
+          ARCH=armhf
+        elif [ "${{matrix.jobs.goarch}}" = "arm" ]; then
+          ARCH=armel
         else
           ARCH=${{matrix.jobs.goarch}}
         fi
