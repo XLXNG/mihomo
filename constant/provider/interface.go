@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/metacubex/mihomo/common/utils"
@@ -31,8 +32,10 @@ func (v VehicleType) String() string {
 }
 
 type Vehicle interface {
-	Read() ([]byte, error)
+	Read(ctx context.Context, oldHash utils.HashType) (buf []byte, hash utils.HashType, err error)
+	Write(buf []byte) error
 	Path() string
+	Url() string
 	Proxy() string
 	Type() VehicleType
 }
@@ -70,6 +73,7 @@ type Provider interface {
 type ProxyProvider interface {
 	Provider
 	Proxies() []constant.Proxy
+	Count() int
 	// Touch is used to inform the provider that the proxy is actually being used while getting the list of proxies.
 	// Commonly used in DialContext and DialPacketConn
 	Touch()
@@ -83,6 +87,7 @@ type ProxyProvider interface {
 type RuleProvider interface {
 	Provider
 	Behavior() RuleBehavior
+	Count() int
 	Match(*constant.Metadata) bool
 	ShouldResolveIP() bool
 	ShouldFindProcess() bool

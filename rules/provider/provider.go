@@ -66,27 +66,21 @@ func (rp *ruleSetProvider) Type() P.ProviderType {
 }
 
 func (rp *ruleSetProvider) Initial() error {
-	elm, err := rp.Fetcher.Initial()
-	if err != nil {
-		return err
-	}
-
-	rp.OnUpdate(elm)
-	return nil
+	_, err := rp.Fetcher.Initial()
+	return err
 }
 
 func (rp *ruleSetProvider) Update() error {
-	elm, same, err := rp.Fetcher.Update()
-	if err == nil && !same {
-		rp.OnUpdate(elm)
-		return nil
-	}
-
+	_, _, err := rp.Fetcher.Update()
 	return err
 }
 
 func (rp *ruleSetProvider) Behavior() P.RuleBehavior {
 	return rp.behavior
+}
+
+func (rp *ruleSetProvider) Count() int {
+	return rp.strategy.Count()
 }
 
 func (rp *ruleSetProvider) Match(metadata *C.Metadata) bool {
@@ -113,9 +107,14 @@ func (rp *ruleSetProvider) MarshalJSON() ([]byte, error) {
 			"name":        rp.Name(),
 			"ruleCount":   rp.strategy.Count(),
 			"type":        rp.Type().String(),
-			"updatedAt":   rp.UpdatedAt,
+			"updatedAt":   rp.UpdatedAt(),
 			"vehicleType": rp.VehicleType().String(),
 		})
+}
+
+func (rp *RuleSetProvider) Close() error {
+	runtime.SetFinalizer(rp, nil)
+	return rp.ruleSetProvider.Close()
 }
 
 func NewRuleSetProvider(name string, behavior P.RuleBehavior, format P.RuleFormat, interval time.Duration, vehicle P.Vehicle,
@@ -139,8 +138,7 @@ func NewRuleSetProvider(name string, behavior P.RuleBehavior, format P.RuleForma
 		rp,
 	}
 
-	final := func(provider *RuleSetProvider) { _ = rp.Fetcher.Destroy() }
-	runtime.SetFinalizer(wrapper, final)
+	runtime.SetFinalizer(wrapper, (*RuleSetProvider).Close)
 	return wrapper
 }
 
