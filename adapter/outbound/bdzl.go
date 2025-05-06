@@ -13,7 +13,6 @@ import (
 	"net"
 	"strconv"
 
-	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	C "github.com/metacubex/mihomo/constant"
@@ -61,8 +60,8 @@ func (h *Bdzl) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.Me
 }
 
 // DialContext implements C.ProxyAdapter
-func (h *Bdzl) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (_ C.Conn, err error) {
-	return h.DialContextWithDialer(ctx, dialer.NewDialer(h.Base.DialOptions(opts...)...), metadata)
+func (h *Bdzl) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
+	return h.DialContextWithDialer(ctx, dialer.NewDialer(h.DialOptions()...), metadata)
 }
 
 // DialContextWithDialer implements C.ProxyAdapter
@@ -77,7 +76,6 @@ func (h *Bdzl) DialContextWithDialer(ctx context.Context, dialer C.Dialer, metad
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %w", h.addr, err)
 	}
-	N.TCPKeepAlive(c)
 
 	defer func(c net.Conn) {
 		safeConnClose(c, err)
