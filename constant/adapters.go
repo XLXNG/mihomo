@@ -43,6 +43,8 @@ const (
 	Tuic
 	Bdzl
 	Ssh
+	Mieru
+	AnyTLS
 )
 
 const (
@@ -100,15 +102,24 @@ type Dialer interface {
 	ListenPacket(ctx context.Context, network, address string, rAddrPort netip.AddrPort) (net.PacketConn, error)
 }
 
+type ProxyInfo struct {
+	XUDP        bool
+	TFO         bool
+	MPTCP       bool
+	SMUX        bool
+	Interface   string
+	RoutingMark int
+	DialerProxy string
+}
+
 type ProxyAdapter interface {
 	Name() string
 	Type() AdapterType
 	Addr() string
 	SupportUDP() bool
-	SupportXUDP() bool
-	SupportTFO() bool
-	SupportMPTCP() bool
-	SupportSMUX() bool
+
+	// ProxyInfo contains some extra information maybe useful for MarshalJSON
+	ProxyInfo() ProxyInfo
 	MarshalJSON() ([]byte, error)
 
 	// Deprecated: use DialContextWithDialer and ListenPacketWithDialer instead.
@@ -124,8 +135,8 @@ type ProxyAdapter interface {
 
 	// DialContext return a C.Conn with protocol which
 	// contains multiplexing-related reuse logic (if any)
-	DialContext(ctx context.Context, metadata *Metadata, opts ...dialer.Option) (Conn, error)
-	ListenPacketContext(ctx context.Context, metadata *Metadata, opts ...dialer.Option) (PacketConn, error)
+	DialContext(ctx context.Context, metadata *Metadata) (Conn, error)
+	ListenPacketContext(ctx context.Context, metadata *Metadata) (PacketConn, error)
 
 	// SupportUOT return UDP over TCP support
 	SupportUOT() bool
@@ -139,11 +150,13 @@ type ProxyAdapter interface {
 
 	// Unwrap extracts the proxy from a proxy-group. It returns nil when nothing to extract.
 	Unwrap(metadata *Metadata, touch bool) Proxy
+
+	// Close releasing associated resources
+	Close() error
 }
 
 type Group interface {
 	URLTest(ctx context.Context, url string, expectedStatus utils.IntRanges[uint16]) (mp map[string]uint16, err error)
-	GetProxies(touch bool) []Proxy
 	Touch()
 }
 
@@ -220,7 +233,10 @@ func (at AdapterType) String() string {
 		return "Tuic"
 	case Ssh:
 		return "Ssh"
-
+	case Mieru:
+		return "Mieru"
+	case AnyTLS:
+		return "AnyTLS"
 	case Relay:
 		return "Relay"
 	case Selector:

@@ -42,7 +42,6 @@ func NewSubscriptionInfo(userinfo string) (si *SubscriptionInfo) {
 			si.Expire = intValue
 		}
 	}
-
 	return si
 }
 

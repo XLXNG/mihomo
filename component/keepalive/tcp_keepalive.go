@@ -35,7 +35,7 @@ func KeepAliveInterval() time.Duration {
 
 func SetDisableKeepAlive(disable bool) {
 	if runtime.GOOS == "android" {
-		setDisableKeepAlive(false)
+		setDisableKeepAlive(true)
 	} else {
 		setDisableKeepAlive(disable)
 	}
@@ -59,7 +59,7 @@ func SetNetListenConfig(lc *net.ListenConfig) {
 }
 
 func TCPKeepAlive(c net.Conn) {
-	if tcp, ok := c.(*net.TCPConn); ok && tcp != nil {
+	if tcp, ok := c.(TCPConn); ok && tcp != nil {
 		tcpKeepAlive(tcp)
 	}
 }

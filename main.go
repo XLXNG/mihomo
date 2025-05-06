@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/metacubex/mihomo/component/generater"
 	"github.com/metacubex/mihomo/component/geodata"
 	"github.com/metacubex/mihomo/component/updater"
 	"github.com/metacubex/mihomo/config"
@@ -70,6 +72,11 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "generate" {
+		generater.Main(os.Args[2:])
+		return
+	}
+
 	if version {
 		fmt.Printf("Mihomo Meta %s %s %s with %s %s\n",
 			C.Version, runtime.GOOS, runtime.GOARCH, runtime.Version(), C.BuildTime)
@@ -95,6 +102,13 @@ func main() {
 	if configString != "" {
 		var err error
 		configBytes, err = base64.StdEncoding.DecodeString(configString)
+		if err != nil {
+			log.Fatalln("Initial configuration error: %s", err.Error())
+			return
+		}
+	} else if configFile == "-" {
+		var err error
+		configBytes, err = io.ReadAll(os.Stdin)
 		if err != nil {
 			log.Fatalln("Initial configuration error: %s", err.Error())
 			return

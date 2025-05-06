@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"strconv"
 
+	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/proxydialer"
@@ -58,15 +59,15 @@ func (ss *Socks5) StreamConnContext(ctx context.Context, c net.Conn, metadata *C
 			Password: ss.pass,
 		}
 	}
-	if _, err := socks5.ClientHandshake(c, serializesSocksAddr(metadata), socks5.CmdConnect, user); err != nil {
+	if _, err := ss.clientHandshakeContext(ctx, c, serializesSocksAddr(metadata), socks5.CmdConnect, user); err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
 // DialContext implements C.ProxyAdapter
-func (ss *Socks5) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (_ C.Conn, err error) {
-	return ss.DialContextWithDialer(ctx, dialer.NewDialer(ss.Base.DialOptions(opts...)...), metadata)
+func (ss *Socks5) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
+	return ss.DialContextWithDialer(ctx, dialer.NewDialer(ss.DialOptions()...), metadata)
 }
 
 // DialContextWithDialer implements C.ProxyAdapter
@@ -100,8 +101,8 @@ func (ss *Socks5) SupportWithDialer() C.NetWork {
 }
 
 // ListenPacketContext implements C.ProxyAdapter
-func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (_ C.PacketConn, err error) {
-	var cDialer C.Dialer = dialer.NewDialer(ss.Base.DialOptions(opts...)...)
+func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (_ C.PacketConn, err error) {
+	var cDialer C.Dialer = dialer.NewDialer(ss.DialOptions()...)
 	if len(ss.option.DialerProxy) > 0 {
 		cDialer, err = proxydialer.NewByName(ss.option.DialerProxy, cDialer)
 		if err != nil {
@@ -135,7 +136,7 @@ func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata,
 	}
 
 	udpAssocateAddr := socks5.AddrFromStdAddrPort(netip.AddrPortFrom(netip.IPv4Unspecified(), 0))
-	bindAddr, err := socks5.ClientHandshake(c, udpAssocateAddr, socks5.CmdUDPAssociate, user)
+	bindAddr, err := ss.clientHandshakeContext(ctx, c, udpAssocateAddr, socks5.CmdUDPAssociate, user)
 	if err != nil {
 		err = fmt.Errorf("client hanshake error: %w", err)
 		return
@@ -147,7 +148,7 @@ func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata,
 		err = errors.New("invalid UDP bind address")
 		return
 	} else if bindUDPAddr.IP.IsUnspecified() {
-		serverAddr, err := resolveUDPAddr(ctx, "udp", ss.Addr())
+		serverAddr, err := resolveUDPAddr(ctx, "udp", ss.Addr(), C.IPv4Prefer)
 		if err != nil {
 			return nil, err
 		}
@@ -169,6 +170,21 @@ func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata,
 	}()
 
 	return newPacketConn(&socksPacketConn{PacketConn: pc, rAddr: bindUDPAddr, tcpConn: c}, ss), nil
+}
+
+// ProxyInfo implements C.ProxyAdapter
+func (ss *Socks5) ProxyInfo() C.ProxyInfo {
+	info := ss.Base.ProxyInfo()
+	info.DialerProxy = ss.option.DialerProxy
+	return info
+}
+
+func (ss *Socks5) clientHandshakeContext(ctx context.Context, c net.Conn, addr socks5.Addr, command socks5.Command, user *socks5.User) (_ socks5.Addr, err error) {
+	if ctx.Done() != nil {
+		done := N.SetupContextForConn(ctx, c)
+		defer done(&err)
+	}
+	return socks5.ClientHandshake(c, addr, command, user)
 }
 
 func NewSocks5(option Socks5Option) (*Socks5, error) {

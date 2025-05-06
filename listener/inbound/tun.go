@@ -23,22 +23,26 @@ type TunOption struct {
 	GSOMaxSize             uint32   `inbound:"gso-max-size,omitempty"`
 	Inet4Address           []string `inbound:"inet4-address,omitempty"`
 	Inet6Address           []string `inbound:"inet6-address,omitempty"`
-	IPRoute2TableIndex     int      `inbound:"iproute2-table-index"`
-	IPRoute2RuleIndex      int      `inbound:"iproute2-rule-index"`
-	AutoRedirect           bool     `inbound:"auto-redirect"`
-	AutoRedirectInputMark  uint32   `inbound:"auto-redirect-input-mark"`
-	AutoRedirectOutputMark uint32   `inbound:"auto-redirect-output-mark"`
+	IPRoute2TableIndex     int      `inbound:"iproute2-table-index,omitempty"`
+	IPRoute2RuleIndex      int      `inbound:"iproute2-rule-index,omitempty"`
+	AutoRedirect           bool     `inbound:"auto-redirect,omitempty"`
+	AutoRedirectInputMark  uint32   `inbound:"auto-redirect-input-mark,omitempty"`
+	AutoRedirectOutputMark uint32   `inbound:"auto-redirect-output-mark,omitempty"`
 	StrictRoute            bool     `inbound:"strict-route,omitempty"`
-	RouteAddress           []string `inbound:"route-address"`
-	RouteAddressSet        []string `inbound:"route-address-set"`
-	RouteExcludeAddress    []string `inbound:"route-exclude-address"`
-	RouteExcludeAddressSet []string `inbound:"route-exclude-address-set"`
+	RouteAddress           []string `inbound:"route-address,omitempty"`
+	RouteAddressSet        []string `inbound:"route-address-set,omitempty"`
+	RouteExcludeAddress    []string `inbound:"route-exclude-address,omitempty"`
+	RouteExcludeAddressSet []string `inbound:"route-exclude-address-set,omitempty"`
 	IncludeInterface       []string `inbound:"include-interface,omitempty"`
-	ExcludeInterface       []string `inbound:"exclude-interface"`
+	ExcludeInterface       []string `inbound:"exclude-interface,omitempty"`
 	IncludeUID             []uint32 `inbound:"include-uid,omitempty"`
 	IncludeUIDRange        []string `inbound:"include-uid-range,omitempty"`
 	ExcludeUID             []uint32 `inbound:"exclude-uid,omitempty"`
 	ExcludeUIDRange        []string `inbound:"exclude-uid-range,omitempty"`
+	ExcludeSrcPort         []uint16 `inbound:"exclude-src-port,omitempty"`
+	ExcludeSrcPortRange    []string `inbound:"exclude-src-port-range,omitempty"`
+	ExcludeDstPort         []uint16 `inbound:"exclude-dst-port,omitempty"`
+	ExcludeDstPortRange    []string `inbound:"exclude-dst-port-range,omitempty"`
 	IncludeAndroidUser     []int    `inbound:"include-android-user,omitempty"`
 	IncludePackage         []string `inbound:"include-package,omitempty"`
 	ExcludePackage         []string `inbound:"exclude-package,omitempty"`
@@ -137,6 +141,10 @@ func NewTun(options *TunOption) (*Tun, error) {
 			IncludeUIDRange:        options.IncludeUIDRange,
 			ExcludeUID:             options.ExcludeUID,
 			ExcludeUIDRange:        options.ExcludeUIDRange,
+			ExcludeSrcPort:         options.ExcludeSrcPort,
+			ExcludeSrcPortRange:    options.ExcludeSrcPortRange,
+			ExcludeDstPort:         options.ExcludeDstPort,
+			ExcludeDstPortRange:    options.ExcludeDstPortRange,
 			IncludeAndroidUser:     options.IncludeAndroidUser,
 			IncludePackage:         options.IncludePackage,
 			ExcludePackage:         options.ExcludePackage,

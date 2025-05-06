@@ -221,7 +221,7 @@ func updateExperimental(c *config.Experimental) {
 	if c.QUICGoDisableECN {
 		_ = os.Setenv("QUIC_GO_DISABLE_ECN", strconv.FormatBool(true))
 	}
-	dialer.GetIP4PEnable(c.IP4PEnable)
+	resolver.SetIP4PEnable(c.IP4PEnable)
 }
 
 func updateNTP(c *config.NTP) {
@@ -375,9 +375,8 @@ func hcCompatibleProvider(proxyProviders map[string]provider.ProxyProvider) {
 				}
 			}()
 		}
-
 	}
-
+	wg.Wait()
 }
 
 func updateSniffer(snifferConfig *sniffer.Config) {
@@ -455,7 +454,7 @@ func updateGeneral(general *config.General, logging bool) {
 	mihomoHttp.SetUA(general.GlobalUA)
 	resource.SetETag(general.ETagSupport)
 
-	tlsC.SetGlobalUtlsClient(general.GlobalClientFingerprint)
+	tlsC.SetGlobalFingerprint(general.GlobalClientFingerprint)
 }
 
 func updateUsers(users []auth.AuthUser) {
